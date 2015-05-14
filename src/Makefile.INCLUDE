@@ -194,8 +194,9 @@ SCRIPTS = @4Daverage @CommandGlobb @GetAfniOrient @DTI_studio_reposition        
           @Install_FATCAT_DEMO @Install_RSFMRI_Motion_Group_Demo                  \
           @Install_MEICA_Demo @T1scale 3dMVM @compute_gcor 3dLME                  \
           @Install_ClustScat_Demo @Install_FATMVM_DEMO                            \
-          @move.to.series.dirs @toMNI_Awarp @toMNI_Qwarpar @simulate_motion	    \
-          @afni.run.me 3dRprogDemo @ExamineGenFeatDists rPkgsInstall
+          @move.to.series.dirs @toMNI_Awarp @toMNI_Qwarpar @simulate_motion       \
+          @afni.run.me 3dRprogDemo @ExamineGenFeatDists rPkgsInstall              \
+          3dPFM @Install_3dPFM_Demo
 
 
 PY_DIR = python_scripts
@@ -1854,7 +1855,8 @@ afni_doc.tgz:
 
 ### Put things in their places
 
-install: $(INSTALLDIR) $(INSTALL_PREREQ) ptaylor_install pkundu_install
+install: $(INSTALLDIR) $(INSTALL_PREREQ) ptaylor_install pkundu_install \
+         ccaballero_install
 	$(MV) $(PROGRAMS) $(INSTALLDIR)
 	$(CP) $(SCRIPTS)  $(INSTALLDIR)
 	$(CP) $(PY_DIR)/*.py  $(R_DIR)/*.R $(INSTALLDIR)
@@ -3113,6 +3115,12 @@ pkundu_install:
 	( cd pkundu ;	\
 	./@install_pkundu $(INSTALLDIR)	;\
 	cd ../	;		)
+
+#############
+#CCABALLERO directory
+
+ccaballero_install:
+	cp ccaballero/3dPFM.R $(INSTALLDIR)
 
 #############
 #SUMA
