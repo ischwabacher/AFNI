@@ -179,6 +179,7 @@ gDEF_IM_YOFF    = 400           # (initial) image offset in y direction
 gDEF_GR_SIZE    = [400,300]     # graph size, in pixels
 gDEF_GR_XOFF    = 0             # graph offset in the x direction
 gDEF_GR_YOFF    = 400           # (initial) graph offset in y direction
+gDEF_OPACITY    = 6             # default opacity if overlays provided
 
 gDEF_WINDOWS    = ['sagittal', 'axial'] # default windows to open
 
@@ -206,6 +207,11 @@ class GenEPIReview:
         self.gr_xoff    = None                  # x-offset of image windows
         self.gr_yoff    = None                  # initial y-offset if images
 
+        # overlay parameters
+        self.overlays   = None
+        self.aoverlays  = None
+        self.opacity    = None
+
     def init_opts(self):
         global g_help_string
         self.valid_opts = option_list.OptionList('for input')
@@ -221,7 +227,7 @@ class GenEPIReview:
                         helpstr='display the current version number')
 
         # required arguments
-        self.valid_opts.add_opt('-dsets', -1, [], req=1,
+        self.valid_opts.add_opt('-dsets', -1, [], req=1, okdash=0,
                         helpstr='list of input datasets')
 
         # optional arguments
@@ -247,6 +253,12 @@ class GenEPIReview:
                         helpstr='x-offset for graph, in pixels')
         self.valid_opts.add_opt('-gr_yoff', 1, [],
                         helpstr='y-offset for graph, in pixels')
+
+        # overlay arguments
+        self.valid_opts.add_opt('-overlays', -1, [], okdash=0,
+                        helpstr='list of datasets to overlay')
+        self.valid_opts.add_opt('-opacity', 1, [],
+                        helpstr='opacity of overlay datasets (0-9)')
 
 
     def read_opts(self):
@@ -353,6 +365,25 @@ class GenEPIReview:
         if err: return 1
         if not self.gr_yoff: self.gr_yoff = gDEF_GR_YOFF
 
+
+        # ----------------------------------------
+        # overlay arguments
+        opt = self.user_opts.find_opt('-overlays')
+        if opt and opt.parlist:
+            self.overlays = opt.parlist
+            self.aoverlays = [BASE.afni_name(s) for s in opt.parlist]
+        if self.overlays is not None and len(self.overlays) != len(self.dsets):
+            print '** expected %d overlays; got %d' \
+                % (len(self.dsets), len(self.overlays))
+            return 1
+
+        self.opacity, err = self.user_opts.get_type_opt(int, '-opacity')
+        if err: return 1
+        if self.opacity is None: self.opacity = gDEF_OPACITY
+        if not 0 <= self.opacity <= 9:
+            print '** opacity must be between 0 and 9'
+            return 1
+
         # ----------------------------------------
         # check over the inputs
 
@@ -370,6 +401,13 @@ class GenEPIReview:
               "# set the list of datasets\n"                                \
               "set dsets = ( %s )\n\n" %                                    \
                  ' '.join([dset.prefix for dset in self.adsets])
+
+        if self.aoverlays:
+            c2 += \
+              '# ------------------------------------------------------\n'  \
+              '# set the list of overlays\n'                                \
+              'set overlays = ( %s )\n\n' %                                 \
+                 ' '.join([dset.prefix for dset in self.aoverlays])
 
         c2 += '# ------------------------------------------------------\n'  \
               '# verify that the input data exists\n'                       \
@@ -390,14 +428,20 @@ class GenEPIReview:
               'plugout_drive \\\n'                                          \
               '    -com "SWITCH_UNDERLAY %s" \\\n'                          \
                % self.adsets[0].prefix
+        if self.aoverlays:
+            c2 += \
+              '    -com "SWITCH_OVERLAY %s" \\\n'                           \
+               % self.aoverlays[0].prefix
 
         # open windows in the list
         if self.verb>1: print '++ opening windows: %s' % ', '.join(self.windows)
 
         for ind in range(len(self.windows)):
             c2 += '    -com "OPEN_WINDOW %simage  \\\n'                  \
+                  '                      opacity=%d  \\\n'                  \
                   '                      geom=%dx%d+%d+%d" \\\n' %          \
-                  (self.windows[ind], self.im_size[0], self.im_size[1], 
+                  (self.windows[ind], self.opacity,
+                   self.im_size[0], self.im_size[1],
                    self.im_xoff+ind*self.im_size[0], self.im_yoff)
 
         c2 += '    -com "OPEN_WINDOW sagittalgraph  \\\n'                   \
@@ -417,17 +461,22 @@ class GenEPIReview:
 
         c2  = '# ------------------------------------------------------\n'  \
               '# process each dataset using video mode\n\n'                 \
-              'foreach dset ( $dsets )\n'                                   \
+              '@ i = 1\n'                                                   \
+              'while ( $i <= $#dsets )\n'                                   \
               '    plugout_drive \\\n'                                      \
-              '        -com "SWITCH_UNDERLAY $dset" \\\n'                   \
-              '        -com "OPEN_WINDOW sagittalgraph  \\\n'               \
+              '        -com "SWITCH_UNDERLAY $dsets[$i]" \\\n'
+        if self.aoverlays:
+            c2 += \
+              '        -com "SWITCH_OVERLAY $overlays[$i]" \\\n'
+        c2 += '        -com "OPEN_WINDOW sagittalgraph  \\\n'               \
               '                          keypress=a\\\n'                    \
               '                          keypress=v"\\\n'                   \
               '        -quit\n\n'                                           \
               '    sleep 2    # wait for plugout_drive output\n\n'          \
               '    echo ""\n'                                               \
-              '    echo "++ now viewing $dset, hit enter to continue"\n'    \
+              '    echo "++ now viewing $dsets[$i], hit enter to continue"\n' \
               '    set ret = $<    # wait for user to hit enter\n'          \
+              '    @ i += 1\n'                                              \
               'end\n\n\n'
 
         cmd += UTIL.add_line_wrappers(c2)
