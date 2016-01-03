@@ -849,7 +849,7 @@ class SubjProcSream:
                         helpstr='exit script on any command error')
         self.valid_opts.add_opt('-gen_epi_review', 1, [],
                         helpstr='generate a script to review orig EPI data')
-        self.valid_opts.add_opt('-epi_review_outliers', 0, []
+        self.valid_opts.add_opt('-epi_review_outliers', 0, [],
                         helpstr='show outliers in EPI review script')
         self.valid_opts.add_opt('-no_epi_review', 0, [],
                         helpstr='do not generate an EPI review script')
@@ -868,8 +868,9 @@ class SubjProcSream:
                         helpstr='use -legendre in 3dToutcount?  (def=yes)')
         self.valid_opts.add_opt('-outlier_polort', 1, [],
                         helpstr='3dToutcount polort (default is as with 3dD)')
-        self.valid_opts.add_opt('-outlier_save', 0, [],
-                                "suffix for outlier dataset (def=don't save)")
+        self.valid_opts.add_opt('-outlier_save', 1, [],
+                        acplist=['yes', 'no'],
+                        helpstr="suffix for outlier dataset (def=don't save)")
         self.valid_opts.add_opt('-remove_preproc_files', 0, [],
                         helpstr='remove pb0* preprocessing files')
         self.valid_opts.add_opt('-test_for_dsets', 1, [],
@@ -1281,7 +1282,7 @@ class SubjProcSream:
 
         # using outliers in the EPI review requires them to be computed
         if opt_list.find_opt('-epi_review_outliers'):
-           opt_list.add_opt('-outlier_save', 0, [], setpar=1)
+           opt_list.add_opt('-outlier_save', 1, ['yes'], setpar=1)
 
         # end options that imply other options
         # --------------------------------------------------
