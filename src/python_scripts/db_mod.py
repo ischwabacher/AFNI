@@ -361,6 +361,11 @@ def make_outlier_commands(proc, block):
     if not opt or OL.opt_is_yes(opt): lstr = ' -legendre'
     else:                             lstr = ''
 
+    # save outlier BRIK?
+    opt = proc.user_opts.find_opt('-outlier_save')
+    if OL.opt_is_yes(opt): sstr = ' -save outliers.r$run'
+    else:                  sstr = ''
+
     prev_prefix = proc.prev_prefix_form_run(block, view=1)
     ofile = 'outcount.r$run.1D'
     warn  = '** TR #0 outliers: possible pre-steady state TRs in run $run'
@@ -373,10 +378,10 @@ def make_outlier_commands(proc, block):
     if proc.out_ss_lim > 0.0: cmd += 'touch %s\n' % proc.out_wfile
 
     cmd += 'foreach run ( $runs )\n'                                      \
-           '    3dToutcount -automask -fraction -polort %d%s \\\n'        \
+           '    3dToutcount -automask -fraction -polort %d%s%s \\\n'      \
            '                %s > %s\n'                                    \
            '%s'                                                           \
-           % (polort, lstr, prev_prefix, ofile, cs0)
+           % (polort, lstr, sstr, prev_prefix, ofile, cs0)
 
     if proc.out_ss_lim > 0.0:
        cmd +='\n'                                                        \
@@ -5659,12 +5664,16 @@ def db_cmd_gen_review(proc):
 
     # get dataset names, but be sure not to get the surface form
     dstr = proc.dset_form_wild('tcat', proc.origview, surf_names=0)
+    if proc.user_opts.find_opt('-epi_review_outliers'):
+        ostr = ' \\\n    -overlays outliers.r*+orig.HEAD'
+    else:
+        ostr = ''
     cmd = "# %s\n\n"                                                    \
           "# generate a review script for the unprocessed EPI data\n"   \
           "gen_epi_review.py -script %s \\\n"                           \
-          "    -dsets %s\n\n"                                           \
+          "    -dsets %s%s\n\n"                                         \
           % (block_header('auto block: generate review scripts'),
-             proc.epi_review, dstr)
+             proc.epi_review, dstr, ostr)
 
     lopts = ' '
     if proc.mot_cen_lim > 0.0: lopts += '-mot_limit %s ' % proc.mot_cen_lim
